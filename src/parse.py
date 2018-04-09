@@ -19,15 +19,20 @@
 
 import typing
 from article import Article
-import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from nltk.stem import PorterStemmer
+from nltk.stem.snowball import EnglishStemmer
+from nltk.stem import LancasterStemmer
 
 # nltk.download('punkt')
 # nltk.download('stopwords')
+# nltk.download('wordnet')
 
 
 NUMBER_OF_ABSTRACTS = 1400
+# NUMBER_OF_ABSTRACTS = 1400
 INDEX_PREFIX = '.I'
 TITLE_PREFIX = '.T'
 AUTHORS_PREFIX = '.A'
@@ -35,13 +40,16 @@ INFO_PREFIX = '.B'
 ABSTRACT_PREFIX = '.W'
 
 
+lemmatizer = WordNetLemmatizer()
 stop = set(stopwords.words('english'))
-st = nltk.stem.porter.PorterStemmer()
-# st = nltk.stem.lancaster.LancasterStemmer()
+# st = PorterStemmer()
+st = EnglishStemmer()
+# st = LancasterStemmer()
 
 
 def normalize(text):
-    tokens = [st.stem(s) for s in word_tokenize(text)]
+    # tokens = [st.stem(s) for s in word_tokenize(text)]
+    tokens = [lemmatizer.lemmatize(s) for s in word_tokenize(text)]
     return [t for t in tokens if t not in stop]
 
 
@@ -82,11 +90,11 @@ def get_abstract(f):
     return abstract, s
 
 
-def parse():
+def parse(verbose=0):
     articles: typing.List[Article] = []
     with open('./data/cran.all.1400') as f:
         s = f.readline()
-        for i in range(0, 1400, 1):
+        for i in range(0, NUMBER_OF_ABSTRACTS, 1):
             index = get_index(s)
             f.readline()
             title = get_title(f)
@@ -94,8 +102,12 @@ def parse():
             info = get_info(f)
             abstract, s = get_abstract(f)
             articles.append(Article(index, normalize(title), authors, info, normalize(abstract)))
-    for article in articles:
-        print(article.index)
-        print(article.title)
-        print(article.abstract)
+
+    if verbose > 0:
+        for article in articles:
+            print(article.index)
+            if verbose > 1:
+                print(article.title)
+            if verbose > 2:
+                print(article.abstract)
     return articles
