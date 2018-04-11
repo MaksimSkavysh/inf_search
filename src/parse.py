@@ -108,5 +108,5 @@ def parse_requests(verbose=0):
             question, s = get_question(f)
             normalized = normalize(question)
             # print(index, normalize(normalized))
-            requests.append({'index': index, 'question': normalized})
+            requests.append({'index': index, 'tokens': normalized})
     return requests
