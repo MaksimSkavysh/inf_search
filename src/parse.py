@@ -19,38 +19,7 @@
 
 import typing
 from article import Article
-from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
-from nltk.stem import PorterStemmer
-from nltk.stem.snowball import EnglishStemmer
-from nltk.stem import LancasterStemmer
-
-# nltk.download('punkt')
-# nltk.download('stopwords')
-# nltk.download('wordnet')
-
-
-NUMBER_OF_ABSTRACTS = 1400
-# NUMBER_OF_ABSTRACTS = 1400
-INDEX_PREFIX = '.I'
-TITLE_PREFIX = '.T'
-AUTHORS_PREFIX = '.A'
-INFO_PREFIX = '.B'
-ABSTRACT_PREFIX = '.W'
-
-
-lemmatizer = WordNetLemmatizer()
-stop = set(stopwords.words('english'))
-# st = PorterStemmer()
-st = EnglishStemmer()
-# st = LancasterStemmer()
-
-
-def normalize(text):
-    # tokens = [st.stem(s) for s in word_tokenize(text)]
-    tokens = [lemmatizer.lemmatize(s) for s in word_tokenize(text)]
-    return [t for t in tokens if t not in stop]
+from normalize import normalize
 
 
 def sum_lines(x, y):
@@ -64,6 +33,15 @@ def parse_data(f, prefix, handler=sum_lines):
         title = handler(title, s)
         s = f.readline()
     return title, s
+
+
+NUMBER_OF_ABSTRACTS = 1400
+# NUMBER_OF_ABSTRACTS = 700
+INDEX_PREFIX = '.I'
+TITLE_PREFIX = '.T'
+AUTHORS_PREFIX = '.A'
+INFO_PREFIX = '.B'
+ABSTRACT_PREFIX = '.W'
 
 
 def get_index(s):
@@ -81,7 +59,7 @@ def get_authors(f):
 
 
 def get_info(f):
-    info, s = parse_data(f, ABSTRACT_PREFIX)
+    info = parse_data(f, ABSTRACT_PREFIX)
     return info
 
 
@@ -90,8 +68,8 @@ def get_abstract(f):
     return abstract, s
 
 
-def parse(verbose=0):
-    articles: typing.List[Article] = []
+def parse_articles(verbose=0):
+    articles = {}
     with open('./data/cran.all.1400') as f:
         s = f.readline()
         for i in range(0, NUMBER_OF_ABSTRACTS, 1):
@@ -101,7 +79,8 @@ def parse(verbose=0):
             authors = get_authors(f)
             info = get_info(f)
             abstract, s = get_abstract(f)
-            articles.append(Article(index, normalize(title), authors, info, normalize(abstract)))
+            # articles.append(Article(index, normalize(title), authors, info, normalize(abstract)))
+            articles[index] = Article(index, normalize(title), authors, info, normalize(abstract))
 
     if verbose > 0:
         for article in articles:
@@ -110,4 +89,24 @@ def parse(verbose=0):
                 print(article.title)
             if verbose > 2:
                 print(article.abstract)
+    print()
     return articles
+
+
+def get_question(f):
+    info, s = parse_data(f, INDEX_PREFIX)
+    return info, s
+
+
+def parse_requests(verbose=0):
+    requests = []
+    with open('./data/cran.qry') as f:
+        s = f.readline()
+        while s:
+            index = get_index(s)
+            f.readline()
+            question, s = get_question(f)
+            normalized = normalize(question)
+            # print(index, normalize(normalized))
+            requests.append({'index': index, 'question': normalized})
+    return requests
