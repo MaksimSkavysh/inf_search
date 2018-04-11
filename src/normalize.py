@@ -11,6 +11,7 @@ from nltk.stem import LancasterStemmer
 
 english_stop_words = stopwords.words('english')
 english_stop_words.append('.')
+english_stop_words.append(',')
 stop = set(english_stop_words)
 
 lemmatizer = WordNetLemmatizer()

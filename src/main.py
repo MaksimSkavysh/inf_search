@@ -9,7 +9,7 @@ index, N, L = title_inv_index(documents)
 requests = parse_requests()
 
 
-def get_ftd():
+def get_ftd(token, document):
     return 1
 
 
@@ -21,16 +21,21 @@ def rsv(q, d):
     rsv_sum = 0
     for token in q:
         N_t = len(index[token])
-        ftd = get_ftd()
+        ftd = get_ftd(token, d)
         idf = math.log(1 + (N - N_t + 0.5)/(N_t + 0.5))
         tf_td = (ftd*(k1 + 1)) / (k1*((1-b) + b * (Ld/L)) + ftd)
         rsv_sum = rsv_sum + idf*tf_td
     return rsv_sum
 
 
-def get_related_documents(q):
+def get_related_documents_list(q):
+    d_list = []
     for token in q:
-        print(token, index[token])
+        cur_documents = index[token]
+        for d in cur_documents:
+            if d not in d_list:
+                d_list.append(d)
+    return d_list
 
 
 def main():
@@ -38,7 +43,8 @@ def main():
 
     q_index = request['index']
     q = request['question']
-    get_related_documents(q)
+    related_documents = get_related_documents_list(q)
+    print(related_documents)
 
 
 main()
