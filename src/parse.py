@@ -68,8 +68,8 @@ def get_abstract(f):
     return abstract, s
 
 
-def parse_articles(verbose=0):
-    articles = {}
+def parse_articles(parse_abstract=False, verbose=False):
+    documents = {}
     with open('./data/cran.all.1400') as f:
         s = f.readline()
         for i in range(0, NUMBER_OF_ABSTRACTS, 1):
@@ -80,17 +80,16 @@ def parse_articles(verbose=0):
             info = get_info(f)
             abstract, s = get_abstract(f)
             # articles.append(Article(index, normalize(title), authors, info, normalize(abstract)))
-            articles[index] = Article(index, normalize(title), authors, info, normalize(abstract))
 
-    if verbose > 0:
-        for article in articles:
-            print(article.index)
-            if verbose > 1:
-                print(article.title)
-            if verbose > 2:
-                print(article.abstract)
-    print()
-    return articles
+            if parse_abstract:
+                documents[index] = normalize(abstract)
+            else:
+                documents[index] = normalize(title)
+    if verbose:
+        for article in documents:
+            print(article)
+
+    return documents
 
 
 def get_question(f):
@@ -102,11 +101,13 @@ def parse_requests(verbose=0):
     requests = []
     with open('./data/cran.qry') as f:
         s = f.readline()
+        i = 0
         while s:
+            i = i + 1
             index = get_index(s)
             f.readline()
             question, s = get_question(f)
             normalized = normalize(question)
             # print(index, normalize(normalized))
-            requests.append({'index': index, 'tokens': normalized})
+            requests.append({'index': i, 'tokens': normalized})
     return requests

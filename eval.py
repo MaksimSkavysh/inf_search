@@ -1,5 +1,5 @@
-groundtruth_file = 'test.qrel_clean'
-answer_file = 'answer'
+groundtruth_file = './data/qrel_clean'
+answer_file = './data/answer'
 
 q2reld = {} 
 for line in open(groundtruth_file):

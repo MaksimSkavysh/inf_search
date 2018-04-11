@@ -15,12 +15,12 @@ english_stop_words.append(',')
 stop = set(english_stop_words)
 
 lemmatizer = WordNetLemmatizer()
-st = EnglishStemmer()
+# st = EnglishStemmer()
 # st = PorterStemmer()
-# st = LancasterStemmer()
+st = LancasterStemmer()
 
 
 def normalize(text):
-    tokens = [st.stem(s) for s in word_tokenize(text)]
-    # tokens = [lemmatizer.lemmatize(s) for s in word_tokenize(text)]
+    # tokens = [st.stem(s) for s in word_tokenize(text)]
+    tokens = [lemmatizer.lemmatize(s) for s in word_tokenize(text)]
     return [t for t in tokens if t not in stop]

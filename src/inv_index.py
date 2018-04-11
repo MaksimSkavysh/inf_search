@@ -1,34 +1,18 @@
-import typing
-from article import Article
 from collections import defaultdict
 
 
-def inv_index(articles: typing.List[Article], field):
-    index = defaultdict(list)
+def get_inv_index(documents):
+    inv_index = defaultdict(list)
     N = 0
     total_words = 0
-    for key in articles:
+    for index in documents:
         N = N + 1
-        article = articles[key]
-        tokens_list = article.__getattribute__(field)
-        total_words = total_words + len(tokens_list)
-        for token in tokens_list:
-            if not index[token]:
-                index[token] = []
-            if article.index not in index[token]:
-                index[token].append(article.index)
-            # index[token].append(article.index)
-    # print(index['.'])
-    # print(N)
-    # print(total_words)
+        document = documents[index]
+        total_words = total_words + len(document)
+        for token in document:
+            if not inv_index[token]:
+                inv_index[token] = []
+            if index not in inv_index[token]:
+                inv_index[token].append(index)
     L = total_words / N
-    return index, N, L
-
-
-def title_inv_index(articles: typing.List[Article]):
-    return inv_index(articles, 'title')
-
-
-def abstract_inv_index(articles: typing.List[Article]):
-    return inv_index(articles, 'abstract')
-
+    return inv_index, N, L

@@ -1,6 +1,6 @@
 import math
 from parse import parse_articles, parse_requests
-from inv_index import title_inv_index
+from inv_index import get_inv_index
 
 # documents = parse_articles()
 # index, N, L = title_inv_index(documents)
@@ -20,7 +20,8 @@ def get_related_documents_list(inv_index, q):
     return d_list
 
 
-def rsv(q, d, N, L, inv_index):
+def calculate_rsv(q, d, N, L, inv_index):
+    # 1.0788933600108224
     b = 0.75
     k1 = 1.2
     L_d = len(d)
@@ -38,23 +39,51 @@ class InvIndex:
     def __init__(self, field):
         self.field = field
         self.documents = parse_articles()
-        self.inv_index, self.N, self.L = title_inv_index(self.documents)
+        self.inv_index, self.N, self.L = get_inv_index(self.documents)
         self.questions = parse_requests()
+        self.relevance = {}
 
-    def rsv(self, q, d):
-        return rsv(q, d, self.N, self.L, self.inv_index)
+    def calculate_rsv(self, q, d):
+        return calculate_rsv(q, d, self.N, self.L, self.inv_index)
 
-    def check(self):
-        q = self.questions[0]
-        related_documents = get_related_documents_list(self.inv_index, q['tokens'])
-        document = self.documents[related_documents[0]].__getattribute__(self.field)
-        print(q['tokens'], document)
-        print(self.rsv(q['tokens'], document))
+    def search_relevance(self, q):
+        # q = self.questions[0]
+        related_documents_indexes = get_related_documents_list(self.inv_index, q['tokens'])
+
+        # document = self.documents[related_documents_indexes[0]]
+        # print(q['tokens'], document)
+        # print(self.rsv(q['tokens'], document))
+
+        rsv_list = []
+        for d_index in related_documents_indexes:
+            document = self.documents[d_index]
+            rsv = self.calculate_rsv(q['tokens'], document)
+            rsv_list.append((d_index, rsv))
+
+        sorted_rsv_list = sorted(rsv_list, key=lambda tup: -tup[1])
+        relevant_documents = [t[0] for t in sorted_rsv_list[:10]]
+        # print(sorted_rsv_list)
+        # print(q['index'], relevant_documents)
+        return relevant_documents
+
+    def search(self):
+        for question in self.questions:
+            self.relevance[question['index']] = self.search_relevance(question)
+        print(self.relevance)
+
+    def print(self):
+        # f = open('workfile', 'w')
+        with open('./data/answer', 'w') as f:
+            for q_index in self.relevance:
+                for d_index in self.relevance[q_index]:
+                    print(q_index, d_index)
+                    f.write(str(q_index) + ' ' + str(d_index) + '\n')
 
 
 def main():
     inv = InvIndex('title')
-    inv.check()
+    inv.search()
+    inv.print()
 
 
 main()
