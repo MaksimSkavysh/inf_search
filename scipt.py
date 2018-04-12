@@ -1,13 +1,182 @@
 import math
 import sys
+from collections import defaultdict
 import numpy as np
-from parse import parse_articles, parse_requests
-from inv_index import get_inv_index
-from eval_fuction import check_eval
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from nltk.stem import PorterStemmer
+from nltk.stem.snowball import EnglishStemmer
+from nltk.stem import LancasterStemmer
+
+
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
+
 
 INV_INDEX_FILE = './inv_index_save.txt'
 STR_DIVIDER = '-$-'
 DOCUMENT_DIVIDER = 'DOCUMENT_DIVIDER\n'
+
+NUMBER_OF_ABSTRACTS = 1400
+INDEX_PREFIX = '.I'
+TITLE_PREFIX = '.T'
+AUTHORS_PREFIX = '.A'
+INFO_PREFIX = '.B'
+ABSTRACT_PREFIX = '.W'
+
+
+def check_eval():
+    groundtruth_file = './data/qrel_clean'
+    answer_file = './inv_index_answer.txt'
+
+    q2reld = {}
+    for line in open(groundtruth_file):
+        qid, did = [int(x) for x in line.split()]
+        if qid not in q2reld.keys():
+            q2reld[qid] = set()
+        q2reld[qid].add(did)
+
+    q2retrd = {}
+    for line in open(answer_file):
+        qid, did = [int(x) for x in line.split()]
+        if qid not in q2retrd.keys():
+            q2retrd[qid] = []
+        q2retrd[qid].append(did)
+
+    N = len(q2retrd.keys())
+    precision = sum([len(q2reld[q].intersection(q2retrd[q])) * 1.0 / len(q2retrd[q]) for q in q2retrd.keys()]) / N
+    recall = sum([len(q2reld[q].intersection(q2retrd[q])) * 1.0 / len(q2reld[q]) for q in q2retrd.keys()]) / N
+    print("mean precision: {}\nmean recall: {}\nmean F-measure: {}" \
+          .format(precision, recall, 2 * precision * recall / (precision + recall)))
+
+    MAP = 0.0
+    for q in q2retrd.keys():
+        n_results = min(10, len(q2retrd[q]))
+        avep = np.zeros(n_results)
+        for i in range(n_results):
+            avep[i:] += q2retrd[q][i] in q2reld[q]
+            avep[i] *= (q2retrd[q][i] in q2reld[q]) / (i + 1.0)
+        MAP += sum(avep) / min(n_results, len(q2reld[q]))
+    print("MAP@10: {}".format(MAP / N))
+
+
+english_stop_words = stopwords.words('english')
+english_stop_words.append('.')
+english_stop_words.append(',')
+stop = set(english_stop_words)
+
+lemmatizer = WordNetLemmatizer()
+st = EnglishStemmer()
+# st = PorterStemmer()
+# st = LancasterStemmer()
+
+
+def normalize(text):
+    tokens = word_tokenize(text)
+    tokens = [st.stem(t) for t in tokens if t not in stop]
+    # tokens = [lemmatizer.lemmatize(t) for t in tokens if t not in stop]
+    return tokens
+
+
+def get_inv_index(documents):
+    inv_index = defaultdict(list)
+    N = 0
+    total_words = 0
+    for index in documents:
+        N = N + 1
+        document = documents[index]
+        total_words = total_words + len(document)
+        for token in document:
+            if not inv_index[token]:
+                inv_index[token] = []
+            if index not in inv_index[token]:
+                inv_index[token].append(index)
+    L = total_words / N
+    return inv_index, N, L
+
+
+def sum_lines(x, y):
+    return x + y.replace('\n', ' ')
+
+
+def parse_data(f, prefix, handler=sum_lines):
+    s = f.readline()
+    title = ''
+    while prefix not in s and not s == '':
+        title = handler(title, s)
+        s = f.readline()
+    return title, s
+
+
+def get_index(s):
+    return int(s.replace(INDEX_PREFIX, ''))
+
+
+def get_title(f):
+    title, s = parse_data(f, AUTHORS_PREFIX)
+    return title
+
+
+def get_authors(f):
+    authors, s = parse_data(f, INFO_PREFIX)
+    return authors
+
+
+def get_info(f):
+    info = parse_data(f, ABSTRACT_PREFIX)
+    return info
+
+
+def get_abstract(f):
+    abstract, s = parse_data(f, INDEX_PREFIX)
+    return abstract, s
+
+
+def parse_articles(doc_file, parse_abstract=False, verbose=False):
+    documents = {}
+    with open(doc_file) as f:
+        s = f.readline()
+        while s:
+            index = get_index(s)
+            f.readline()
+            title = get_title(f)
+            authors = get_authors(f)
+            info = get_info(f)
+            abstract, s = get_abstract(f)
+
+            if parse_abstract:
+                documents[index] = normalize(abstract)
+            else:
+                documents[index] = normalize(title)
+    if verbose:
+        for article in documents:
+            print(article)
+
+    return documents
+
+
+def get_question(f):
+    info, s = parse_data(f, INDEX_PREFIX)
+    return info, s
+
+
+def parse_requests(qry_file):
+    requests = []
+    with open(qry_file) as f:
+        s = f.readline()
+        i = 0
+        while s:
+            i = i + 1
+            index = get_index(s)
+            f.readline()
+            question, s = get_question(f)
+            normalized = normalize(question)
+            # print(index, normalize(normalized))
+            requests.append({'index': i, 'tokens': normalized})
+    return requests
 
 
 def get_ftd(token, document):
@@ -53,6 +222,19 @@ def calculate_rsv(q, d, N, L, b, k1, inv_index, k2=0):
         if idf > 0:
             rsv_sum = rsv_sum + idf * tf_td * tf_tq
     return rsv_sum
+
+#  default params:
+# mean precision: 0.18222222222222234
+# mean recall: 0.25804024457131114
+# mean F-measure: 0.21360288616472492
+# MAP@10: 0.16733339702136005
+#
+#  best params: k1=1.2 b=0.0
+# mean precision: 0.22400000000000014
+# mean recall: 0.3219516630145968
+# mean F-measure: 0.2641888555373502
+# MAP@10: 0.23864681769827273
+
 
 class InvIndex:
     def __init__(self, use_abstracts=False, b=0.75, k1=1.2, k2=0):
@@ -139,24 +321,7 @@ class InvIndex:
             for q_index in self.relevance:
                 for d_index in self.relevance[q_index]:
                     f.write(str(q_index) + ' ' + str(d_index) + '\n')
-
-
-def run(file_path, use_abstracts=False, b=0.75, k1=1.2, k2=0):
-    print('\nParams: ',
-          'using',
-          'Annotations, ' if use_abstracts else 'Titles',
-          '| b=' + str(b),
-          '| k1=' + str(k1),
-          '| k2=' + str(k2),
-          )
-    inv = InvIndex(use_abstracts=use_abstracts, b=b, k1=k1, k2=k2)
-    inv.load_documents(file_path)
-    inv.build_inv_index()
-    inv.print_inv_index()
-
-    inv.search()
-    inv.print()
-    check_eval()
+            print('Top 10 RSV saved into ./inv_index_answer.txt')
 
 
 def index_mode(file_path, use_abstracts=False, b=0.75, k1=1.2, k2=0):
@@ -207,7 +372,7 @@ def main():
         index_mode(use_abstracts=use_abstracts, b=0.75, k1=1.2, k2=0, file_path=file_path)
 
     if mode == 'search':
-        search_mode(use_abstracts=use_abstracts, b=0.75, k1=1.2, k2=0, qry_path=file_path)
+        # search_mode(use_abstracts=use_abstracts, b=0.75, k1=1.2, k2=0, qry_path=file_path)
         search_mode(use_abstracts=use_abstracts, b=0.0, k1=1.2, k2=0, qry_path=file_path)
 
         # index_mode(use_abstracts=False, b=0.75, k1=1.2, k2=0)
@@ -223,8 +388,6 @@ def main():
         #         search_mode(use_abstracts=use_abstracts, b=b, k1=k1, k2=0, qry_path=file_path)
 
         # for k2 in [1, 2, 3, 4, 5,  10, 50, 100, 200, 500, 700, 1000]:
-        #     print('\n params: k1=1.2 b=0.0, k2=', k2)
         #     search_mode(use_abstracts=use_abstracts, b=0.75, k1=1.2, k2=k2, qry_path=file_path)
-
 
 main()
