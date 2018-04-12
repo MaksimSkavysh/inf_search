@@ -5,10 +5,8 @@ from parse import parse_articles, parse_requests
 from inv_index import get_inv_index
 from eval_fuction import check_eval
 
-# documents = parse_articles()
-# index, N, L = title_inv_index(documents)
-
 INV_INDEX_FILE = './inv_index_save.txt'
+INV_DIVIDER = '-$-'
 
 
 def get_ftd(token, document):
@@ -48,10 +46,10 @@ def calculate_rsv(q, d, N, L, b, k1, inv_index, k2=0):
         if ftd == 0:
             continue
         idf = calculate_idf(N, N_t)
-        tf_td = (ftd*(k1 + 1)) / (k1*((1-b) + b * (L_d/L)) + ftd)
-        tf_tq = ((k2+1) * ftd) / (k2+ftd)
+        tf_td = (ftd * (k1 + 1)) / (k1 * ((1 - b) + b * (L_d / L)) + ftd)
+        tf_tq = ((k2 + 1) * ftd) / (k2 + ftd)
         if idf > 0:
-            rsv_sum = rsv_sum + idf*tf_td*tf_tq
+            rsv_sum = rsv_sum + idf * tf_td * tf_tq
     return rsv_sum
 
 #  default params:
@@ -68,16 +66,20 @@ def calculate_rsv(q, d, N, L, b, k1, inv_index, k2=0):
 
 
 class InvIndex:
-    def __init__(self, doc_file, use_abstracts=False, b=0.75, k1=1.2, k2=0):
-        self.documents = parse_articles(doc_file, use_abstracts)
+    def __init__(self, use_abstracts=False, b=0.75, k1=1.2, k2=0):
+        self.documents = None
         self.questions = None
         self.relevance = {}
         self.b = b
         self.k1 = k1
         self.k2 = k2
+        self.use_abstracts = use_abstracts
         self.inv_index = None
         self.N = None
         self.L = None
+
+    def load_documents(self, doc_file):
+        self.documents = parse_articles(doc_file, self.use_abstracts)
 
     def load_questions(self):
         self.questions = parse_requests()
@@ -90,7 +92,8 @@ class InvIndex:
             f.write(str(self.N) + '\n')
             f.write(str(self.L) + '\n')
             for token in self.inv_index:
-                f.write(token + '-$-' + str(self.inv_index[token]) + '\n')
+                inv_str = str(self.inv_index[token]).replace('[', '').replace(']', '').replace(' ', '')
+                f.write(token + INV_DIVIDER + inv_str + '\n')
             print('saved in ' + INV_INDEX_FILE + ' file')
 
     def load_inv_index(self):
@@ -99,10 +102,9 @@ class InvIndex:
             self.L = float(f.readline())
             self.inv_index = {}
             for line in f:
-                token, d_list = line.split('-$-')
-                d_list = d_list.replace('[', '').replace(']', '').replace('\n', '')
+                token, d_list = line.split(INV_DIVIDER)
+                d_list = d_list.replace('\n', '')
                 self.inv_index[token] = [int(x) for x in d_list.split(',')]
-                # print([int(x) for x in d_list.split(',')])
 
     def calculate_rsv(self, q, d):
         return calculate_rsv(
@@ -126,15 +128,11 @@ class InvIndex:
             rsv_list.append((d_index, rsv))
 
         sorted_rsv_list = sorted(rsv_list, key=lambda tup: -tup[1])
-        relevant_documents = [t[0] for t in sorted_rsv_list[:10]]
-        # print(sorted_rsv_list)
-        # print(q['index'], relevant_documents)
-        return relevant_documents
+        return [t[0] for t in sorted_rsv_list[:10]]
 
     def search(self):
         for question in self.questions:
             self.relevance[question['index']] = self.search_relevance(question)
-        # print(self.relevance)
 
     def print(self):
         with open('./data/answer', 'w') as f:
@@ -143,7 +141,7 @@ class InvIndex:
                     f.write(str(q_index) + ' ' + str(d_index) + '\n')
 
 
-def run(use_abstracts=False, b=0.75, k1=1.2, k2=0):
+def run(file_path, use_abstracts=False, b=0.75, k1=1.2, k2=0):
     print('\nParams: ',
           'using',
           'Annotations, ' if use_abstracts else 'Titles',
@@ -152,8 +150,10 @@ def run(use_abstracts=False, b=0.75, k1=1.2, k2=0):
           '| k2=' + str(k2),
           )
     inv = InvIndex(use_abstracts=use_abstracts, b=b, k1=k1, k2=k2)
+    inv.load_documents(file_path)
     inv.build_inv_index()
     inv.print_inv_index()
+
     inv.search()
     inv.print()
     check_eval()
@@ -161,8 +161,9 @@ def run(use_abstracts=False, b=0.75, k1=1.2, k2=0):
 
 def index_mode(file_path, use_abstracts=False, b=0.75, k1=1.2, k2=0):
     print('\nBuilding index using',
-          'Annotations' if use_abstracts else 'Titles',)
-    inv = InvIndex(doc_file=file_path, use_abstracts=use_abstracts, b=b, k1=k1, k2=k2)
+          'Annotations' if use_abstracts else 'Titles', )
+    inv = InvIndex(use_abstracts=use_abstracts, b=b, k1=k1, k2=k2)
+    inv.load_documents(file_path)
     inv.build_inv_index()
     inv.print_inv_index()
 
@@ -201,7 +202,7 @@ def main():
         print('python3 ./src/main.py index ./data/cran.all.1400')
         print('python3 ./src/main.py index ./data/cran.all.1400 articles')
         print('python3 ./src/main.py search ./data/cran.qry\n')
-        # exit(0)
+        exit(0)
 
     if mode == 'index':
         index_mode(use_abstracts=use_abstracts, b=0.75, k1=1.2, k2=0, file_path=file_path)
@@ -209,30 +210,27 @@ def main():
     if mode == 'search':
         search_mode(use_abstracts=use_abstracts, b=0.75, k1=1.2, k2=0)
 
-    # index_mode(use_abstracts=False, b=0.75, k1=1.2, k2=0)
-    # run(use_abstracts=False, b=0.75, k1=1.2, k2=0)
-    # run(use_abstracts=True, b=0.75, k1=1.2, k2=0)
+        # index_mode(use_abstracts=False, b=0.75, k1=1.2, k2=0)
+        # run(use_abstracts=False, b=0.75, k1=1.2, k2=0)
+        # run(use_abstracts=True, b=0.75, k1=1.2, k2=0)
 
-    # print('\nBest params:')
-    # run(use_abstracts=False, b=0.0, k1=1.2, k2=0)
-    # run(use_abstracts=True, b=0.0, k1=1.2, k2=0)
+        # print('\nBest params:')
+        # run(use_abstracts=False, b=0.0, k1=1.2, k2=0)
+        # run(use_abstracts=True, b=0.0, k1=1.2, k2=0)
 
+        # for b in np.arange(0, 1.25, 0.25):
+        #     for k1 in np.arange(1.2, 2.1, 0.1):
+        #         print('\n params: ', 'k1=', k1, ' b=', b)
+        #         inv = InvIndex(use_abstracts=False, b=b, k1=k1)
+        #         inv.search()
+        #         inv.print()
+        #         check_eval()
 
-    # for b in np.arange(0, 1.25, 0.25):
-    #     for k1 in np.arange(1.2, 2.1, 0.1):
-    #         print('\n params: ', 'k1=', k1, ' b=', b)
-    #         inv = InvIndex(use_abstracts=False, b=b, k1=k1)
-    #         inv.search()
-    #         inv.print()
-    #         check_eval()
-
-
-    # for k2 in [1, 10, 100, 1000]:
-    #     print('\n params: k1=1.2 b=0.0, k2=', k2)
-    #     inv = InvIndex(use_abstracts=use_abstracts, b=0.0, k1=1.0, k2=k2)
-    #     inv.search()
-    #     inv.print()
-    #     check_eval()
-
+        # for k2 in [1, 10, 100, 1000]:
+        #     print('\n params: k1=1.2 b=0.0, k2=', k2)
+        #     inv = InvIndex(use_abstracts=use_abstracts, b=0.0, k1=1.0, k2=k2)
+        #     inv.search()
+        #     inv.print()
+        #     check_eval()
 
 main()

@@ -17,9 +17,15 @@
 # .W
 # full abstra
 
-import typing
-from article import Article
 from normalize import normalize
+
+
+NUMBER_OF_ABSTRACTS = 1400
+INDEX_PREFIX = '.I'
+TITLE_PREFIX = '.T'
+AUTHORS_PREFIX = '.A'
+INFO_PREFIX = '.B'
+ABSTRACT_PREFIX = '.W'
 
 
 def sum_lines(x, y):
@@ -33,15 +39,6 @@ def parse_data(f, prefix, handler=sum_lines):
         title = handler(title, s)
         s = f.readline()
     return title, s
-
-
-NUMBER_OF_ABSTRACTS = 1400
-# NUMBER_OF_ABSTRACTS = 700
-INDEX_PREFIX = '.I'
-TITLE_PREFIX = '.T'
-AUTHORS_PREFIX = '.A'
-INFO_PREFIX = '.B'
-ABSTRACT_PREFIX = '.W'
 
 
 def get_index(s):
@@ -79,7 +76,6 @@ def parse_articles(doc_file, parse_abstract=False, verbose=False):
             authors = get_authors(f)
             info = get_info(f)
             abstract, s = get_abstract(f)
-            # articles.append(Article(index, normalize(title), authors, info, normalize(abstract)))
 
             if parse_abstract:
                 documents[index] = normalize(abstract)
@@ -97,7 +93,7 @@ def get_question(f):
     return info, s
 
 
-def parse_requests(verbose=0):
+def parse_requests():
     requests = []
     with open('./data/cran.qry') as f:
         s = f.readline()
