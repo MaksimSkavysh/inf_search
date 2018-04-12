@@ -4,7 +4,7 @@ import numpy as np
 
 def check_eval():
     groundtruth_file = './data/qrel_clean'
-    answer_file = './data/answer'
+    answer_file = './inv_index_answer.txt'
 
     q2reld = {}
     for line in open(groundtruth_file):

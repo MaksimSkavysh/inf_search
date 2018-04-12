@@ -147,7 +147,7 @@ class InvIndex:
             self.relevance[question['index']] = self.search_relevance(question)
 
     def print(self):
-        with open('./data/answer', 'w') as f:
+        with open('./inv_index_answer.txt', 'w') as f:
             for q_index in self.relevance:
                 for d_index in self.relevance[q_index]:
                     f.write(str(q_index) + ' ' + str(d_index) + '\n')
@@ -182,9 +182,7 @@ def index_mode(file_path, use_abstracts=False, b=0.75, k1=1.2, k2=0):
 
 def search_mode(qry_path, use_abstracts=False, b=0.75, k1=1.2, k2=0):
     print('\nParams: ',
-          'using',
-          'Annotations' if use_abstracts else 'Titles',
-          '| b=' + str(b),
+          'b=' + str(b),
           '| k1=' + str(k1),
           '| k2=' + str(k2),
           )
@@ -240,10 +238,10 @@ def main():
         #         inv.print()
         #         check_eval()
 
-        # for k2 in [1, 10, 100, 1000]:
+        # for k2 in [1, 10, 50, 100, 200, 500, 700, 1000]:
         #     print('\n params: k1=1.2 b=0.0, k2=', k2)
         #     inv = InvIndex(use_abstracts=use_abstracts, b=0.0, k1=1.0, k2=k2)
-        #     inv.search()
+        #     inv.search()s
         #     inv.print()
         #     check_eval()
 
