@@ -6,7 +6,8 @@ from inv_index import get_inv_index
 from eval_fuction import check_eval
 
 INV_INDEX_FILE = './inv_index_save.txt'
-INV_DIVIDER = '-$-'
+STR_DIVIDER = '-$-'
+DOCUMENT_DIVIDER = 'DOCUMENT_DIVIDER\n'
 
 
 def get_ftd(token, document):
@@ -81,8 +82,8 @@ class InvIndex:
     def load_documents(self, doc_file):
         self.documents = parse_articles(doc_file, self.use_abstracts)
 
-    def load_questions(self):
-        self.questions = parse_requests()
+    def load_questions(self, qry_file):
+        self.questions = parse_requests(qry_file)
 
     def build_inv_index(self):
         self.inv_index, self.N, self.L = get_inv_index(self.documents)
@@ -93,7 +94,11 @@ class InvIndex:
             f.write(str(self.L) + '\n')
             for token in self.inv_index:
                 inv_str = str(self.inv_index[token]).replace('[', '').replace(']', '').replace(' ', '')
-                f.write(token + INV_DIVIDER + inv_str + '\n')
+                f.write(token + STR_DIVIDER + inv_str + '\n')
+            f.write(DOCUMENT_DIVIDER)
+            for d_id in self.documents:
+                d_str = str(self.documents[d_id]).replace('[', '').replace(']', '').replace(' ', '')
+                f.write(str(d_id) + STR_DIVIDER + d_str + '\n')
             print('saved in ' + INV_INDEX_FILE + ' file')
 
     def load_inv_index(self):
@@ -102,7 +107,10 @@ class InvIndex:
             self.L = float(f.readline())
             self.inv_index = {}
             for line in f:
-                token, d_list = line.split(INV_DIVIDER)
+                print(line)
+                if line == DOCUMENT_DIVIDER:
+                    break
+                token, d_list = line.split(STR_DIVIDER)
                 d_list = d_list.replace('\n', '')
                 self.inv_index[token] = [int(x) for x in d_list.split(',')]
 
@@ -168,7 +176,7 @@ def index_mode(file_path, use_abstracts=False, b=0.75, k1=1.2, k2=0):
     inv.print_inv_index()
 
 
-def search_mode(use_abstracts=False, b=0.75, k1=1.2, k2=0):
+def search_mode(qry_path, use_abstracts=False, b=0.75, k1=1.2, k2=0):
     print('\nParams: ',
           'using',
           'Annotations' if use_abstracts else 'Titles',
@@ -177,7 +185,7 @@ def search_mode(use_abstracts=False, b=0.75, k1=1.2, k2=0):
           '| k2=' + str(k2),
           )
     inv = InvIndex(use_abstracts=use_abstracts, b=b, k1=k1, k2=k2)
-    inv.load_questions()
+    inv.load_questions(qry_path)
     inv.load_inv_index()
     inv.search()
     inv.print()
@@ -208,7 +216,7 @@ def main():
         index_mode(use_abstracts=use_abstracts, b=0.75, k1=1.2, k2=0, file_path=file_path)
 
     if mode == 'search':
-        search_mode(use_abstracts=use_abstracts, b=0.75, k1=1.2, k2=0)
+        search_mode(use_abstracts=use_abstracts, b=0.75, k1=1.2, k2=0, qry_path=file_path)
 
         # index_mode(use_abstracts=False, b=0.75, k1=1.2, k2=0)
         # run(use_abstracts=False, b=0.75, k1=1.2, k2=0)

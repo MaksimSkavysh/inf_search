@@ -93,9 +93,9 @@ def get_question(f):
     return info, s
 
 
-def parse_requests():
+def parse_requests(qry_file):
     requests = []
-    with open('./data/cran.qry') as f:
+    with open(qry_file) as f:
         s = f.readline()
         i = 0
         while s:
