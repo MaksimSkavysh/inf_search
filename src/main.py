@@ -8,6 +8,8 @@ from eval_fuction import check_eval
 # documents = parse_articles()
 # index, N, L = title_inv_index(documents)
 
+INV_INDEX_FILE = './inv_index_save.txt'
+
 
 def get_ftd(token, document):
     return document.count(token) / len(document)
@@ -66,9 +68,9 @@ def calculate_rsv(q, d, N, L, b, k1, inv_index, k2=0):
 
 
 class InvIndex:
-    def __init__(self, use_abstracts=False, b=0.75, k1=1.2, k2=0):
-        self.documents = parse_articles(use_abstracts)
-        self.questions = parse_requests()
+    def __init__(self, doc_file, use_abstracts=False, b=0.75, k1=1.2, k2=0):
+        self.documents = parse_articles(doc_file, use_abstracts)
+        self.questions = None
         self.relevance = {}
         self.b = b
         self.k1 = k1
@@ -77,19 +79,22 @@ class InvIndex:
         self.N = None
         self.L = None
 
+    def load_questions(self):
+        self.questions = parse_requests()
+
     def build_inv_index(self):
         self.inv_index, self.N, self.L = get_inv_index(self.documents)
 
     def print_inv_index(self):
-        with open('./inv_index', 'w') as f:
+        with open(INV_INDEX_FILE, 'w') as f:
             f.write(str(self.N) + '\n')
             f.write(str(self.L) + '\n')
             for token in self.inv_index:
                 f.write(token + '-$-' + str(self.inv_index[token]) + '\n')
-            print('saved in ./inv_index file')
+            print('saved in ' + INV_INDEX_FILE + ' file')
 
     def load_inv_index(self):
-        with open('./inv_index', 'r') as f:
+        with open(INV_INDEX_FILE, 'r') as f:
             self.N = int(f.readline())
             self.L = float(f.readline())
             self.inv_index = {}
@@ -154,10 +159,10 @@ def run(use_abstracts=False, b=0.75, k1=1.2, k2=0):
     check_eval()
 
 
-def index_mode(use_abstracts=False, b=0.75, k1=1.2, k2=0):
+def index_mode(file_path, use_abstracts=False, b=0.75, k1=1.2, k2=0):
     print('\nBuilding index using',
           'Annotations' if use_abstracts else 'Titles',)
-    inv = InvIndex(use_abstracts=use_abstracts, b=b, k1=k1, k2=k2)
+    inv = InvIndex(doc_file=file_path, use_abstracts=use_abstracts, b=b, k1=k1, k2=k2)
     inv.build_inv_index()
     inv.print_inv_index()
 
@@ -171,6 +176,7 @@ def search_mode(use_abstracts=False, b=0.75, k1=1.2, k2=0):
           '| k2=' + str(k2),
           )
     inv = InvIndex(use_abstracts=use_abstracts, b=b, k1=k1, k2=k2)
+    inv.load_questions()
     inv.load_inv_index()
     inv.search()
     inv.print()
@@ -198,7 +204,7 @@ def main():
         # exit(0)
 
     if mode == 'index':
-        index_mode(use_abstracts=use_abstracts, b=0.75, k1=1.2, k2=0)
+        index_mode(use_abstracts=use_abstracts, b=0.75, k1=1.2, k2=0, file_path=file_path)
 
     if mode == 'search':
         search_mode(use_abstracts=use_abstracts, b=0.75, k1=1.2, k2=0)

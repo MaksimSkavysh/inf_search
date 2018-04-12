@@ -68,9 +68,9 @@ def get_abstract(f):
     return abstract, s
 
 
-def parse_articles(parse_abstract=False, verbose=False):
+def parse_articles(doc_file, parse_abstract=False, verbose=False):
     documents = {}
-    with open('./data/cran.all.1400') as f:
+    with open(doc_file) as f:
         s = f.readline()
         while s:
             index = get_index(s)
