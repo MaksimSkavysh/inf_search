@@ -93,11 +93,11 @@ class InvIndex:
             f.write(str(self.N) + '\n')
             f.write(str(self.L) + '\n')
             for token in self.inv_index:
-                inv_str = str(self.inv_index[token]).replace('[', '').replace(']', '').replace(' ', '')
+                inv_str = ','.join([str(x) for x in self.inv_index[token]])
                 f.write(token + STR_DIVIDER + inv_str + '\n')
             f.write(DOCUMENT_DIVIDER)
             for d_id in self.documents:
-                d_str = str(self.documents[d_id]).replace('[', '').replace(']', '').replace(' ', '')
+                d_str = ','.join(self.documents[d_id])
                 f.write(str(d_id) + STR_DIVIDER + d_str + '\n')
             print('saved in ' + INV_INDEX_FILE + ' file')
 
@@ -107,12 +107,16 @@ class InvIndex:
             self.L = float(f.readline())
             self.inv_index = {}
             for line in f:
-                print(line)
                 if line == DOCUMENT_DIVIDER:
                     break
                 token, d_list = line.split(STR_DIVIDER)
                 d_list = d_list.replace('\n', '')
                 self.inv_index[token] = [int(x) for x in d_list.split(',')]
+            self.documents = {}
+            for line in f:
+                d_index, d_tokens = line.split(STR_DIVIDER)
+                d_tokens = d_tokens.replace('\n', '')
+                self.documents[int(d_index)] = [x for x in d_tokens.split(',')]
 
     def calculate_rsv(self, q, d):
         return calculate_rsv(
@@ -200,16 +204,17 @@ def main():
         mode = sys.argv[1]
         file_path = sys.argv[2]
         if len(sys.argv) > 3:
-            use_abstracts = True if sys.argv[3] == 'articles' else False
+            use_abstracts = True if sys.argv[3] == 'abstract' else False
         print('Running', mode, 'mode')
     except Exception as e:
         print('Wrong arguments')
-        print('template:')
-        print('<script> <mode (index or search)> <file path> <articles (optional)>')
-        print('examples:')
+        print('\nTemplate:')
+        print('<script> index <articles file path> <abstract (optional to use abstracts or titles)>')
+        print('<script> search <queries file path>')
+        print('\nExamples:')
         print('python3 ./src/main.py index ./data/cran.all.1400')
-        print('python3 ./src/main.py index ./data/cran.all.1400 articles')
-        print('python3 ./src/main.py search ./data/cran.qry\n')
+        print('python3 ./src/main.py index ./data/cran.all.1400 abstract')
+        print('python3 ./src/main.py search ./data/cran.qry')
         exit(0)
 
     if mode == 'index':
@@ -217,6 +222,7 @@ def main():
 
     if mode == 'search':
         search_mode(use_abstracts=use_abstracts, b=0.75, k1=1.2, k2=0, qry_path=file_path)
+        search_mode(use_abstracts=use_abstracts, b=0.0, k1=1.2, k2=0, qry_path=file_path)
 
         # index_mode(use_abstracts=False, b=0.75, k1=1.2, k2=0)
         # run(use_abstracts=False, b=0.75, k1=1.2, k2=0)
