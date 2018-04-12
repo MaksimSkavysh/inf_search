@@ -72,7 +72,7 @@ def parse_articles(parse_abstract=False, verbose=False):
     documents = {}
     with open('./data/cran.all.1400') as f:
         s = f.readline()
-        for i in range(0, NUMBER_OF_ABSTRACTS, 1):
+        while s:
             index = get_index(s)
             f.readline()
             title = get_title(f)
