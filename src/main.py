@@ -1,6 +1,8 @@
 import math
+import numpy as np
 from parse import parse_articles, parse_requests
 from inv_index import get_inv_index
+from eval_fuction import check_eval
 
 # documents = parse_articles()
 # index, N, L = title_inv_index(documents)
@@ -20,39 +22,48 @@ def get_related_documents_list(inv_index, q):
     return d_list
 
 
-def calculate_rsv(q, d, N, L, inv_index):
-    # 1.0788933600108224
-    b = 0.75
-    k1 = 1.2
+def calculate_simple_idf(N, N_t):
+    return math.log((N - N_t) / N_t)
+
+
+def calculate_idf(N, N_t ):
+    return math.log(1 + (N - N_t + 0.5) / (N_t + 0.5))
+
+
+def calculate_rsv(q, d, N, L, b, k1, inv_index):
     L_d = len(d)
     rsv_sum = 0
     for token in q:
         N_t = len(inv_index[token])
         ftd = get_ftd(token, d)
-        idf = math.log(1 + (N - N_t + 0.5)/(N_t + 0.5))
+        idf = calculate_idf(N, N_t )
         tf_td = (ftd*(k1 + 1)) / (k1*((1-b) + b * (L_d/L)) + ftd)
         rsv_sum = rsv_sum + idf*tf_td
     return rsv_sum
 
 
 class InvIndex:
-    def __init__(self, field):
-        self.field = field
-        self.documents = parse_articles()
+    def __init__(self, use_abstracts=False, b=0.75, k1=1.2):
+        self.documents = parse_articles(use_abstracts)
         self.inv_index, self.N, self.L = get_inv_index(self.documents)
         self.questions = parse_requests()
         self.relevance = {}
+        self.b = b
+        self.k1 = k1
 
     def calculate_rsv(self, q, d):
-        return calculate_rsv(q, d, self.N, self.L, self.inv_index)
+        return calculate_rsv(
+            q=q,
+            d=d,
+            N=self.N,
+            L=self.L,
+            b=self.b,
+            k1=self.k1,
+            inv_index=self.inv_index
+        )
 
     def search_relevance(self, q):
-        # q = self.questions[0]
         related_documents_indexes = get_related_documents_list(self.inv_index, q['tokens'])
-
-        # document = self.documents[related_documents_indexes[0]]
-        # print(q['tokens'], document)
-        # print(self.rsv(q['tokens'], document))
 
         rsv_list = []
         for d_index in related_documents_indexes:
@@ -69,21 +80,37 @@ class InvIndex:
     def search(self):
         for question in self.questions:
             self.relevance[question['index']] = self.search_relevance(question)
-        print(self.relevance)
+        # print(self.relevance)
 
     def print(self):
-        # f = open('workfile', 'w')
         with open('./data/answer', 'w') as f:
             for q_index in self.relevance:
                 for d_index in self.relevance[q_index]:
-                    print(q_index, d_index)
                     f.write(str(q_index) + ' ' + str(d_index) + '\n')
 
 
 def main():
-    inv = InvIndex('title')
+    use_abstracts = False
+
+    print('\n default params: ')
+    inv = InvIndex(use_abstracts=use_abstracts, b=0.75, k1=1.2)
     inv.search()
     inv.print()
+    check_eval()
+
+    # for b in np.arange(0, 1.25, 0.25):
+    #     for k1 in np.arange(1.2, 2.1, 0.1):
+    #         print('\n params: ', 'k1=', k1, ' b=', b)
+    #         inv = InvIndex(use_abstracts=False, b=b, k1=k1)
+    #         inv.search()
+    #         inv.print()
+    #         check_eval()
+
+    print('\n best params: k1=1.2 b=0.0')
+    inv = InvIndex(use_abstracts=use_abstracts, b=0.0, k1=1.2)
+    inv.search()
+    inv.print()
+    check_eval()
 
 
 main()

@@ -12,15 +12,17 @@ from nltk.stem import LancasterStemmer
 english_stop_words = stopwords.words('english')
 english_stop_words.append('.')
 english_stop_words.append(',')
+# english_stop_words.append('?')
 stop = set(english_stop_words)
 
 lemmatizer = WordNetLemmatizer()
-# st = EnglishStemmer()
+st = EnglishStemmer()
 # st = PorterStemmer()
-st = LancasterStemmer()
+# st = LancasterStemmer()
 
 
 def normalize(text):
-    # tokens = [st.stem(s) for s in word_tokenize(text)]
-    tokens = [lemmatizer.lemmatize(s) for s in word_tokenize(text)]
-    return [t for t in tokens if t not in stop]
+    tokens = word_tokenize(text)
+    tokens = [st.stem(t) for t in tokens if t not in stop]
+    # tokens = [lemmatizer.lemmatize(t) for t in tokens if t not in stop]
+    return tokens
